@@ -1,3 +1,8 @@
+# Python-script Highlight Mapping 
+
+This is a fork of the script made by Mahmad Sharaf which automates the process of moving highlights from Kindle E-readers to a Calibre Library. The intent of this fork is to both organize and improve on what has already been made.
+
+
 ## Technical Documentation for Book Highlight Mapping Program
 
 This document provides an overview of a Python program designed to automate the management of book highlights. The program facilitates the parsing of highlights from Kindle devices, matching these highlights to books in the Calibre library, and further handling the matched data for user interactions. This comprehensive tool is particularly useful for individuals looking to streamline their digital reading workflow and synchronize their highlights across different platforms.
