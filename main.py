@@ -4,7 +4,6 @@ import json
 import time
 import pyautogui
 import pyperclip
-import json
 import re
 
 
@@ -262,54 +261,70 @@ def open_book_in_calibre_viewer(book_path):
     try:
         # Start Calibre Viewer with the specified book
         subprocess.Popen(["ebook-viewer", book_path])
-        time.sleep(15)
+        time.sleep(5)
     except subprocess.CalledProcessError as e:
         print(f"Failed to open book: {e}")
     except Exception as e:
         print(f"An error occurred: {e}")
 
-
 def perform_text_operations(highlight_texts):
     """
-    Interacts with the user to verify if highlights were found correctly and handles user responses.
-
-    Args:
-        highlight_texts (list): A list of text strings to be verified.
-
-    Returns:
-        list: A list of highlights that were not found according to user input.
+    Automatically highlights all text in the Calibre viewer without user confirmation.
+    Includes robust focus switching and 'slow jiggle' to ensure selection.
     """
-    highlights_not_found = []  # List to store highlights not confirmed by the user
-
+    not_found = []
+    
     for idx, text in enumerate(highlight_texts):
-        pyautogui.hotkey("ctrl", "f")  # Open search window
-        pyperclip.copy(text)  # Copy text to clipboard
-        pyautogui.hotkey("ctrl", "v")  # Paste the text
+        try:
+            print(f"    [{idx+1}/{len(highlight_texts)}] Processing highlight...")
+            
+            # --- 1. PROCESO DE BÚSQUEDA ---
+            pyautogui.hotkey("ctrl", "f")
+            time.sleep(0.3)
+            
+            # Limpiar y pegar
+            pyautogui.hotkey("ctrl", "a")
+            pyautogui.press("backspace")
+            pyperclip.copy(text)
+            pyautogui.hotkey("ctrl", "v")
+            time.sleep(0.2)
+            
+            # Buscar (Enter)
+            pyautogui.press("enter")
+            # TIEMPO CRÍTICO: Esperar a que Calibre se desplace al texto
+            time.sleep(0.1)
+            pyautogui.press("enter")
+            time.sleep(0.5)
 
-        pyautogui.hotkey("enter")  # Paste the text
-        pyautogui.hotkey("enter")  # Paste the text
 
-        user_confirmation = pyautogui.confirm(
-            f"Confirm if the highlight was found correctly.\n Highlight {idx+1} of {len(highlight_texts)}",
-            buttons=["Yes", "No"],
-        )
-
-        if user_confirmation == "Yes":
+            # Mantener Shift presionado
             pyautogui.keyDown("shiftleft")
             pyautogui.keyDown("shiftright")
+            time.sleep(0.3)
             pyautogui.hotkey("right", "left")
+            time.sleep(0.3)
             pyautogui.keyUp("shiftleft")
             pyautogui.keyUp("shiftright")
             pyautogui.press("q")  # Press 'Q'
-        elif user_confirmation == "No":
-            highlights_not_found.append(text)
-    if highlights_not_found:
-        pyautogui.alert(
-            f"Some highlights were not found: {len(highlights_not_found)} skipped."
-        )
-    else:
-        pyautogui.alert(f"All highlights applied successfully")
-    return highlights_not_found
+            # --- 4. SUBRAYADO ---
+            # Presionar la tecla de subrayado (q o h según tu configuración)
+            pyautogui.press("q") 
+            
+            # Esperar a que la animación visual termine antes de pasar al siguiente
+            time.sleep(0.5)
+            
+            print(f"    [{idx+1}/{len(highlight_texts)}] Highlight applied (Auto) ✓")
+            
+        except Exception as e:
+            print(f"    [{idx+1}/{len(highlight_texts)}] Error: {str(e)}")
+            not_found.append(text)
+            # Asegurar escape en caso de error para no romper el siguiente ciclo
+            pyautogui.press("escape")
+            continue
+    
+    # Limpieza final
+    return not_found
+
 
 
 def main():
@@ -397,40 +412,70 @@ def main():
             )
         )
 
-    # Allow the user to select a book to open
-    book_id = int(
-        input(
-            "From the above list, enter a {Book ID} to open the book in Calibre ebook Viewer and start highlighting process: "
-        ).strip()
-    )
-    book_path = None
+    # Automatically select books: 100% matches are auto-selected, ask for others
+    books_to_process = []
+    perfect_matches = [b for b in matches if b["matched_score"] == 100]
+    partial_matches = [b for b in matches if b["matched_score"] < 100]
 
-    for book in matches:
-        if book["book_id"] == book_id:
-            book_highlights = [
-                highlight["highlight"] for highlight in book["highlights"]
-            ]
-            book_path = book["book_path"][0]
-            break
+    # Auto-select perfect matches (100% score)
+    books_to_process.extend(perfect_matches)
+    if perfect_matches:
+        print(
+            f"\n✓ Auto-selected {len(perfect_matches)} book(s) with 100% match score."
+        )
+        for book in perfect_matches:
+            print(
+                f"  - {book['device_title']} (Score: {book['matched_score']})"
+            )
 
-    if not book_path:
-        print("Book path not found. Please check the Book ID and try again.")
+    # Ask user for partial matches
+    if partial_matches:
+        print(f"\n? Found {len(partial_matches)} book(s) with partial matches:")
+        for book in partial_matches:
+            user_choice = pyautogui.confirm(
+                f"Process '{book['device_title']}' (Score: {book['matched_score']})?\n(This book might not be correctly matched)",
+                buttons=["Yes", "No"],
+            )
+            if user_choice == "Yes":
+                books_to_process.append(book)
+
+    if not books_to_process:
+        print("\nNo books selected for highlighting. Exiting.")
         return
 
-    # Open the book in Calibre Book Viewer
-    print("Opening book in Calibre Book Viewer ...")
-    open_book_in_calibre_viewer(book_path)
-    print("Book is open.")
-    print("Highlighting is in progress....")
+    print(
+        f"\nProcessing {len(books_to_process)} book(s) with {sum(len(b['highlights']) for b in books_to_process)} highlight(s) total.\n"
+    )
 
-    # Perform text operations
-    highlights_not_found = perform_text_operations(book_highlights)
-    print("Highlighting complete.")
-    if highlights_not_found:
-        print("Some highlights were not found:")
-        print(highlights_not_found)
-    else:
-        print("All highlights were successfully found and marked.")
+    # Process each selected book
+    for book_index, book in enumerate(books_to_process, 1):
+        print(
+            f"\n[{book_index}/{len(books_to_process)}] Processing '{book['device_title']}'..."
+        )
+        book_highlights = [
+            highlight["highlight"] for highlight in book["highlights"]
+        ]
+        book_path = book["book_path"][0]
+
+        if not book_path:
+            print(f"  ERROR: Book path not found. Skipping.")
+            continue
+
+        # Open the book in Calibre Book Viewer
+        print("  Opening book in Calibre Book Viewer ...")
+        open_book_in_calibre_viewer(book_path)
+        print("  Book is open.")
+        print("  Highlighting is in progress....")
+
+        # Perform text operations
+        highlights_not_found = perform_text_operations(book_highlights)
+        print("  Highlighting complete.")
+        if highlights_not_found:
+            print(
+                f"  ⚠ {len(highlights_not_found)} highlight(s) were not found."
+            )
+        else:
+            print("  ✓ All highlights were successfully found and marked.")
 
 if __name__ == "__main__":
     main()

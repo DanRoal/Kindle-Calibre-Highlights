@@ -8,3 +8,5 @@ dist/*
 main.spec
 My Clippings.txt
 main.exe
+.env
+.vscode/

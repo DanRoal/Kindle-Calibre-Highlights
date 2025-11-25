@@ -2,6 +2,8 @@
 
 This is a fork of the script made by Mahmad Sharaf which automates the process of moving highlights from Kindle E-readers to a Calibre Library. The intent of this fork is to both organize and improve on what has already been made.
 
+The following text is kept as the original repository until further documentation is made
+
 
 ## Technical Documentation for Book Highlight Mapping Program
 
