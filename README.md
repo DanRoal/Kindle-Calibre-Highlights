@@ -4,6 +4,9 @@ This is a fork of the script made by Mahmad Sharaf which automates the process o
 
 The following text is kept as the original repository until further documentation is made
 
+## WARNINGS
+- It does not work with notes, ONLY highlights. The program will try to look up notes and probably not find them it wont mess up the flow (probably)
+- DO NOT MOVE OR CHANGE THE FOCUSED WINDOW WHILE THE PROGRAM IS WORKING
 
 ## Technical Documentation for Book Highlight Mapping Program
 
