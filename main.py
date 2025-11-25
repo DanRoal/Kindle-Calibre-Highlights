@@ -278,51 +278,43 @@ def perform_text_operations(highlight_texts):
         try:
             print(f"    [{idx+1}/{len(highlight_texts)}] Processing highlight...")
             
-            # --- 1. PROCESO DE BÚSQUEDA ---
             pyautogui.hotkey("ctrl", "f")
             time.sleep(0.3)
             
-            # Limpiar y pegar
-            pyautogui.hotkey("ctrl", "a")
+            # Clean and paste the text to search
+            pyautogui.hotkey("ctrl", "a") #probably not needed
             pyautogui.press("backspace")
             pyperclip.copy(text)
             pyautogui.hotkey("ctrl", "v")
             time.sleep(0.2)
             
-            # Buscar (Enter)
             pyautogui.press("enter")
-            # TIEMPO CRÍTICO: Esperar a que Calibre se desplace al texto
             time.sleep(0.1)
             pyautogui.press("enter")
-            time.sleep(0.5)
+            time.sleep(0.5) # CRITICAL WAIT 
 
 
-            # Mantener Shift presionado
+            # Select and deselect next caracter to make calibre focus on the text
             pyautogui.keyDown("shiftleft")
             pyautogui.keyDown("shiftright")
-            time.sleep(0.3)
             pyautogui.hotkey("right", "left")
-            time.sleep(0.3)
             pyautogui.keyUp("shiftleft")
             pyautogui.keyUp("shiftright")
+            # fast highlight
             pyautogui.press("q")  # Press 'Q'
-            # --- 4. SUBRAYADO ---
-            # Presionar la tecla de subrayado (q o h según tu configuración)
-            pyautogui.press("q") 
             
-            # Esperar a que la animación visual termine antes de pasar al siguiente
             time.sleep(0.5)
             
             print(f"    [{idx+1}/{len(highlight_texts)}] Highlight applied (Auto) ✓")
-            
+        
+        # Since it assumes everything works, this next section is probably not needed
         except Exception as e:
             print(f"    [{idx+1}/{len(highlight_texts)}] Error: {str(e)}")
             not_found.append(text)
-            # Asegurar escape en caso de error para no romper el siguiente ciclo
             pyautogui.press("escape")
             continue
     
-    # Limpieza final
+
     return not_found
 
 
