@@ -201,17 +201,50 @@ def find_best_match_book_id_and_save(
         if best_match:
             # Retrieve matching book details from Calibre
             book_id = calibre_metadata[best_match[0]]
-            if book_id:
+            # Normalize numeric-looking IDs to int when possible
+            resolved_book_key = None
+            if book_id is not None:
+                try:
+                    resolved_book_key = int(book_id)
+                except Exception:
+                    resolved_book_key = book_id
+
+            # If the key isn't present in the calibre books listing, try to find it by title
+            if resolved_book_key not in title_to_details:
+                calibre_title = best_match[0]
+                norm_calibre_title = replace_special_characters(calibre_title).lower()
+                # Try a relaxed match: check if the calibre book title is contained in the device title or vice-versa
+                for k, details in title_to_details.items():
+                    norm_details_title = replace_special_characters(details["title"]).lower()
+                    if norm_details_title in norm_calibre_title or norm_calibre_title in norm_details_title:
+                        resolved_book_key = k
+                        break
+                # As a last resort, try fuzzy matching between the device title and calibre titles
+                if resolved_book_key not in title_to_details:
+                    calibre_titles = [d["title"] for d in title_to_details.values()]
+                    fuzzy_choice = process.extractOne(calibre_title, calibre_titles)
+                    if fuzzy_choice and fuzzy_choice[1] >= 80:
+                        # find the key corresponding to the fuzzy matched title
+                        for k, details in title_to_details.items():
+                            if details["title"] == fuzzy_choice[0]:
+                                resolved_book_key = k
+                                break
+
+            if resolved_book_key in title_to_details:
                 match_info = {
                     "device_title": highlight_title,
                     "calibre_title": best_match[0],
-                    "mapped_title": title_to_details[book_id]["title"],
-                    "book_id": book_id,
+                    "mapped_title": title_to_details[resolved_book_key]["title"],
+                    "book_id": resolved_book_key,
                     "matched_score": best_match[1],
-                    "book_path": title_to_details[book_id]["path"],
+                    "book_path": title_to_details[resolved_book_key]["path"],
                     "highlights": highlights,
                 }
                 matches.append(match_info)
+            else:
+                print(
+                    f"Warning: could not resolve Calibre book id for '{best_match[0]}'. Skipping."
+                )
 
     # Save the matched data to a JSON file
     with open("device_to_calibre_mapping.json", "w", encoding="utf-8") as file:
